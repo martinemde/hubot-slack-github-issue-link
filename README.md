@@ -6,6 +6,9 @@ This script only emits Slack attachments which are crafted specifically for the 
 
 See [`src/slack-github-issue-link.coffee`](src/slack-github-issue-link.coffee) for full documentation.
 
+![Github issue example output in Slack](https://github.com/martinemde/hubot-slack-github-issue-link/blob/master/examples/issue_example.png)
+
+
 ## Installation
 
 In hubot project repo, run:
