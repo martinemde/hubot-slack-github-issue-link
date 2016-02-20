@@ -1,22 +1,164 @@
-# Description
-#   A hubot script that posts detailed slack attachments for mentioned github issues and pull requests
+# Description:
+#   Github issue link looks for #nnn, and pullrequest or issue urls
+#   and posts a Slack attachment that show detailed information
+#   about the pull requset or issue.
+#
+#   Eg. "Hey guys check out #273"
+#   Eg. "Merge please: https://github.com/martinemde/hubot-slack-github-issue-link/pull/1"
+#
+#   Defaults to issues in HUBOT_GITHUB_REPO when only matching #NNN,
+#   unless a repo is specified Eg. "Hey guys, check out awesome-repo#273"
+#
+#   If HUBOT_GITHUB_ORG is set, it will ignore links outside of
+#   that org to avoid double posting public projects, since Slackbot
+#   will already post a link.
+#
+# Dependencies:
+#   "githubot": "0.4.x"
 #
 # Configuration:
-#   LIST_OF_ENV_VARS_TO_SET
+#   HUBOT_GITHUB_REPO
+#   HUBOT_GITHUB_TOKEN
+#   HUBOT_GITHUB_API
+#   HUBOT_GITHUB_HOSTNAME
+#   HUBOT_GITHUB_ISSUE_LINK_IGNORE_USERS
+#   HUBOT_GITHUB_IGNORE_NON_ORG_LINKS
+#   HUBOT_GITHUB_ORG
 #
 # Commands:
-#   hubot hello - <what the respond trigger does>
-#   orly - <what the hear trigger does>
+#   #nnn - link to GitHub issue nnn for HUBOT_GITHUB_REPO project
+#   repo#nnn - link to GitHub issue nnn for repo project
+#   user/repo#nnn - link to GitHub issue nnn for user/repo project
+#   https://github.com/org/repo/issue/1234
+#   https://github.com/org/repo/pull/1234
 #
 # Notes:
-#   <optional notes required for the script>
+#   HUBOT_GITHUB_HOSTNAME expects the scheme (https://)
+#   HUBOT_GITHUB_API allows you to set a custom URL path (for Github enterprise users) but the links won't match your domain since this only looks for github.com domains. I've never used github enterprise
 #
 # Author:
+#   Originally by tenfef
 #   Martin Emde <me@martinemde.com>
 
 module.exports = (robot) ->
-  robot.respond /hello/, (res) ->
-    res.reply "hello!"
+  github = require("githubot")(robot)
 
-  robot.hear /orly/, ->
-    res.send "yarly"
+  githubIgnoreUsers = process.env.HUBOT_GITHUB_ISSUE_LINK_IGNORE_USERS
+  if githubIgnoreUsers == undefined
+    githubIgnoreUsers = "github|hubot"
+
+  githubHostname = process.env.HUBOT_GITHUB_HOSTNAME || "https://github.com/"
+  githubProjectMatch =
+    if process.env.HUBOT_GITHUB_IGNORE_NON_ORG_LINKS
+      "#{process.env.HUBOT_GITHUB_ORG}/*"
+    else
+      "\S*"
+
+  githubIssueUrlPattern = new RegExp("(https://#{githubHostname}/)?((#{githubProjectMatch}|^)?(#|/issues?/|/pulls?/)(\d+)).*", "i")
+
+  attachmentColor = (obj) ->
+    if obj.labels && obj.labels[0]
+      color = obj.labels[0].color
+    else if obj.merged
+      color = "#6e5494"
+    else
+      switch obj.state
+        when "closed"
+          color = "#bd2c00"
+        else
+          color = "good"
+
+
+  makeAttachment = (obj, type, repo_name) ->
+    issue_title = obj.title
+    html_url    = obj.html_url
+    body        = if obj.body.length > 80 then obj.body.substring(0,80) + "..." else obj.body
+    color       = attachmentColor(obj)
+    state       = obj.state.charAt(0).toUpperCase() + obj.state.slice(1)
+
+    if obj.commits
+      if obj.commits == 1
+        commits = "commit"
+      else
+        commits = "commits"
+      merged = if obj.merged then "merged by #{obj.merged_by.login}" else "unmerged"
+      merged_commits = "#{obj.commits || 0} #{commits} #{merged}"
+      fields = [{
+        title: state
+        value: merged_commits
+        short: true
+      }]
+    else
+      fields = [{
+        title: state
+        short: true
+      }]
+
+    if obj.head && obj.head.ref
+      fields.push
+        title: "#{obj.changed_files} files (++#{obj.additions} / --#{obj.deletions})"
+        value: "<#{obj.html_url}/files|#{obj.head.ref}>"
+        short: true
+
+    return {
+      fallback: "[#{repo_name}] #{type} ##{obj.number} (#{state}): #{issue_title} #{html_url}"
+      pretext: "[#{repo_name}] #{type} ##{obj.number}"
+      title: issue_title
+      title_link: html_url
+      text: body
+      color: color
+      author_name: obj.user.login
+      author_link: obj.user.html_url
+      author_icon: obj.user.avatar_url
+      fields: fields
+
+    }
+
+  matchRepo = (repo) ->
+    if repo == undefined
+      return github.qualified_repo process.env.HUBOT_GITHUB_REPO
+    else if process.env.HUBOT_GITHUB_IGNORE_NON_ORG_LINKS && process.env.HUBOT_GITHUB_ORG && !repo.match(new RegExp(process.env.HUBOT_GITHUB_ORG, "i"))
+      return undefined
+    else
+      return github.qualified_repo repo
+
+  robot.hear githubIssueUrlPattern, (msg) ->
+    if msg.message.user.name.match(new RegExp(githubIgnoreUsers, "gi"))
+      return
+
+    issue_number = msg.match[5]
+    if isNaN(issue_number)
+      return
+
+    repo_name = matchRepo(msg.match[3])
+    if repo_name == undefined
+      return
+
+    base_url = process.env.HUBOT_GITHUB_API || 'https://api.github.com'
+
+    if msg.match[4] == undefined || msg.match[4] == '#'
+      path = "/issues/"
+    else
+      path = msg.match[4]
+
+    if path.match /\/pulls?\//
+      type = "Pull Request"
+      api_path = "pulls"
+    else
+      type = "Issue"
+      api_path = "issues"
+
+    api_url = "#{base_url}/repos/#{repo_name}/#{api_path}/" + issue_number
+
+    github.get api_url, (obj) ->
+      # We usually don't post public PRs, Slack will show them
+      if process.env.HUBOT_GITHUB_IGNORE_NON_ORG_LINKS && obj.base?.repo?.private == false
+        return
+
+      # need to figure out how to exclude public issues
+
+      attachment = makeAttachment(obj, type, repo_name)
+      robot.emit 'slack-attachment',
+        message:
+          room: msg.message.room
+        content: attachment
