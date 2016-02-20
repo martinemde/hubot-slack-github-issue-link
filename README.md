@@ -2,6 +2,8 @@
 
 A hubot script that posts detailed slack attachments for mentioned github issues and pull requests
 
+This script only emits Slack attachments which are crafted specifically for the Slack API.
+
 See [`src/slack-github-issue-link.coffee`](src/slack-github-issue-link.coffee) for full documentation.
 
 ## Installation

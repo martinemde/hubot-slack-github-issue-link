@@ -1,7 +1,7 @@
 # Description:
-#   Github issue link looks for #nnn, and pullrequest or issue urls
-#   and posts a Slack attachment that show detailed information
-#   about the pull requset or issue.
+#   Slack Github issue link looks for #nnn, and pull or issue urls
+#   and posts an informative Slack attachment that show detailed information
+#   about the issue or pull request.
 #
 #   Eg. "Hey guys check out #273"
 #   Eg. "Merge please: https://github.com/martinemde/hubot-slack-github-issue-link/pull/1"
@@ -9,9 +9,10 @@
 #   Defaults to issues in HUBOT_GITHUB_REPO when only matching #NNN,
 #   unless a repo is specified Eg. "Hey guys, check out awesome-repo#273"
 #
-#   If HUBOT_GITHUB_ORG is set, it will ignore links outside of
-#   that org to avoid double posting public projects, since Slackbot
-#   will already post a link.
+#   If HUBOT_GITHUB_IGNORE_NON_ORG_LINKS is set, this scirpt will ignore
+#   links outside of the org set in HUBOT_GITHUB_ORG, and all non-private
+#   project links to avoid double posting public projects. Slackbot will
+#   post (less pretty) links to public github urls, which cannot be avoided.
 #
 # Dependencies:
 #   "githubot": "0.4.x"
@@ -29,32 +30,29 @@
 #   #nnn - link to GitHub issue nnn for HUBOT_GITHUB_REPO project
 #   repo#nnn - link to GitHub issue nnn for repo project
 #   user/repo#nnn - link to GitHub issue nnn for user/repo project
-#   https://github.com/org/repo/issue/1234
-#   https://github.com/org/repo/pull/1234
+#   https://github.com/org/repo/issue/1234 - show details for github issue
+#   https://github.com/org/repo/pull/1234 - show details for github pullrequest
 #
 # Notes:
-#   HUBOT_GITHUB_HOSTNAME expects the scheme (https://)
+#   HUBOT_GITHUB_HOSTNAME, if set, expects the scheme (https://). Defaults to "https://github.com/"
 #   HUBOT_GITHUB_API allows you to set a custom URL path (for Github enterprise users) but the links won't match your domain since this only looks for github.com domains. I've never used github enterprise
 #
 # Author:
-#   Originally by tenfef
 #   Martin Emde <me@martinemde.com>
+#   Originally by tenfef
 
 module.exports = (robot) ->
   github = require("githubot")(robot)
 
-  githubIgnoreUsers = process.env.HUBOT_GITHUB_ISSUE_LINK_IGNORE_USERS
-  if githubIgnoreUsers == undefined
-    githubIgnoreUsers = "github|hubot"
-
-  githubHostname = process.env.HUBOT_GITHUB_HOSTNAME || "https://github.com/"
+  githubIgnoreUsers = process.env.HUBOT_GITHUB_ISSUE_LINK_IGNORE_USERS or "github|hubot"
+  githubHostname = process.env.HUBOT_GITHUB_HOSTNAME or "https://github.com/"
   githubProjectMatch =
-    if process.env.HUBOT_GITHUB_IGNORE_NON_ORG_LINKS
-      "#{process.env.HUBOT_GITHUB_ORG}/*"
+    if process.env.HUBOT_GITHUB_IGNORE_NON_ORG_LINKS != undefined && process.env.HUBOT_GITHUB_ORG != undefined
+      "#{process.env.HUBOT_GITHUB_ORG}/"
     else
-      "\S*"
+      "\\S"
 
-  githubIssueUrlPattern = new RegExp("(https://#{githubHostname}/)?((#{githubProjectMatch}|^)?(#|/issues?/|/pulls?/)(\d+)).*", "i")
+  githubIssueUrlPattern = ///(#{githubHostname}\/?)?((#{githubProjectMatch}*|^)?(#|/issues?/|/pulls?/)(\d+)).*///i
 
   attachmentColor = (obj) ->
     if obj.labels && obj.labels[0]
@@ -111,7 +109,6 @@ module.exports = (robot) ->
       author_link: obj.user.html_url
       author_icon: obj.user.avatar_url
       fields: fields
-
     }
 
   matchRepo = (repo) ->
@@ -122,7 +119,7 @@ module.exports = (robot) ->
     else
       return github.qualified_repo repo
 
-  robot.hear githubIssueUrlPattern, (msg) ->
+  robot.hear githubIssueUrlPattern, id: "hubot-slack-github-issue-link", (msg) ->
     if msg.message.user.name.match(new RegExp(githubIgnoreUsers, "gi"))
       return
 
