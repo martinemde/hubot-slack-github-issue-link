@@ -9,7 +9,7 @@
 #   Defaults to issues in HUBOT_GITHUB_REPO when only matching #NNN,
 #   unless a repo is specified Eg. "Hey guys, check out awesome-repo#273"
 #
-#   If HUBOT_GITHUB_IGNORE_NON_ORG_LINKS is set, this scirpt will ignore
+#   If HUBOT_GITHUB_IGNORE_PUBLIC_LINKS is set, this scirpt will ignore
 #   links outside of the org set in HUBOT_GITHUB_ORG, and all non-private
 #   project links to avoid double posting public projects. Slackbot will
 #   post (less pretty) links to public github urls, which cannot be avoided.
@@ -23,7 +23,7 @@
 #   HUBOT_GITHUB_API
 #   HUBOT_GITHUB_HOSTNAME
 #   HUBOT_GITHUB_ISSUE_LINK_IGNORE_USERS
-#   HUBOT_GITHUB_IGNORE_NON_ORG_LINKS
+#   HUBOT_GITHUB_IGNORE_PUBLIC_LINKS
 #   HUBOT_GITHUB_ORG
 #
 # Commands:
@@ -47,7 +47,7 @@ module.exports = (robot) ->
   githubIgnoreUsers = process.env.HUBOT_GITHUB_ISSUE_LINK_IGNORE_USERS or "github|hubot"
   githubHostname = process.env.HUBOT_GITHUB_HOSTNAME or "https://github.com/"
   githubProjectMatch =
-    if process.env.HUBOT_GITHUB_IGNORE_NON_ORG_LINKS != undefined && process.env.HUBOT_GITHUB_ORG != undefined
+    if process.env.HUBOT_GITHUB_IGNORE_PUBLIC_LINKS != undefined && process.env.HUBOT_GITHUB_ORG != undefined
       "#{process.env.HUBOT_GITHUB_ORG}/"
     else
       "\\S"
@@ -114,7 +114,7 @@ module.exports = (robot) ->
   matchRepo = (repo) ->
     if repo == undefined
       return github.qualified_repo process.env.HUBOT_GITHUB_REPO
-    else if process.env.HUBOT_GITHUB_IGNORE_NON_ORG_LINKS && process.env.HUBOT_GITHUB_ORG && !repo.match(new RegExp(process.env.HUBOT_GITHUB_ORG, "i"))
+    else if process.env.HUBOT_GITHUB_IGNORE_PUBLIC_LINKS && process.env.HUBOT_GITHUB_ORG && !repo.match(new RegExp(process.env.HUBOT_GITHUB_ORG, "i"))
       return undefined
     else
       return github.qualified_repo repo
@@ -149,7 +149,7 @@ module.exports = (robot) ->
 
     github.get api_url, (obj) ->
       # We usually don't post public PRs, Slack will show them
-      if process.env.HUBOT_GITHUB_IGNORE_NON_ORG_LINKS && obj.base?.repo?.private == false
+      if process.env.HUBOT_GITHUB_IGNORE_PUBLIC_LINKS && obj.base?.repo?.private == false
         return
 
       # need to figure out how to exclude public issues
