@@ -23,9 +23,3 @@ Then add **hubot-slack-github-issue-link** to your `external-scripts.json`:
 ]
 ```
 
-## Sample Interaction
-
-```
-user1>> hubot hello
-hubot>> hello!
-```
