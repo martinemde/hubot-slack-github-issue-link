@@ -41,6 +41,10 @@
 #   Martin Emde <me@martinemde.com>
 #   Originally by tenfef
 
+Path             = require "path"
+PullRequest      = require(Path.join(__dirname, "github", "pull_request"))
+Issue            = require(Path.join(__dirname, "github", "issue"))
+
 module.exports = (robot) ->
   github = require("githubot")(robot)
 
