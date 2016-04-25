@@ -1,7 +1,7 @@
 {
   "name": "hubot-slack-github-issue-link",
   "description": "A hubot script that posts detailed slack attachments for mentioned github issues and pull requests",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "author": "Martin Emde <me@martinemde.com>",
   "license": "MIT",
   "keywords": "hubot, hubot-scripts, github, pull-requests, issues, github-issues, github-pull-requests",
