@@ -27,7 +27,6 @@
 #   HUBOT_GITHUB_ORG
 #
 # Commands:
-#   #nnn - link to GitHub issue nnn for HUBOT_GITHUB_REPO project
 #   repo#nnn - link to GitHub issue nnn for repo project
 #   user/repo#nnn - link to GitHub issue nnn for user/repo project
 #   https://github.com/org/repo/issue/1234 - show details for github issue
@@ -52,7 +51,7 @@ module.exports = (robot) ->
     else
       "\\S"
 
-  githubIssueUrlPattern = ///(#{githubHostname}\/?)?((#{githubProjectMatch}*|^)?(#|/issues?/|/pulls?/)(\d+)).*///i
+  githubIssueUrlPattern = ///(#{githubHostname}\/?)?((#{githubProjectMatch}*|^)?(/issues?/|/pulls?/)(\d+)).*///i
 
   attachmentColor = (obj) ->
     if obj.labels && obj.labels[0]
