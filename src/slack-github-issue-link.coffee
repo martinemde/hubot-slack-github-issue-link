@@ -155,7 +155,4 @@ module.exports = (robot) ->
       # need to figure out how to exclude public issues
 
       attachment = makeAttachment(obj, type, repo_name)
-      robot.emit 'slack-attachment',
-        message:
-          room: msg.message.room
-        content: attachment
+      msg.send text: 'GitHub Info', attachments: [attachment]
