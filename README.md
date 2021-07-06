@@ -1,3 +1,7 @@
+# [DEPRECATED]
+
+This repository is outdated and depends on vulnerable packages. The github slack plugin now does everything this does and more. I suggest using that instead.
+
 # hubot-slack-github-issue-link
 
 A hubot script that posts detailed slack attachments for mentioned github issues and pull requests
